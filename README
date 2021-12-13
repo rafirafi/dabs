@@ -1,0 +1,162 @@
+dabs - a DAB/DAB+ decoder
+[version 1.0]
+
+This program receives a DAB+ signal and plays audio data out of it.
+
+It works on gnu/linux systems. Maybe others. You need alsa for audio.
+
+This program is incomplete. I tested it only where I live. I didn't implement
+many many features.
+
+It is released in the public domain as far as I am concerned. I used libfftw,
+so maybe it's not legal. I don't care.
+
+You need libfftw, alsa, libfaad.
+
+For USRP devices, you need libuhd.
+For RTL-SDR devices, you need librtlsdr.
+
+You will probably need to edit Makefile to change directories or whatever.
+Contact me if you have problems: mailto:sed@free.fr
+
+This program is hosted at: http://sedcore.eu.org/dabs/index.html
+
+COMPILATION
+===========
+
+Edit Makefile maybe. Then just do 'make'. Should be it.
+
+As written above you need some libraries. Install them with whatever is
+needed in your system (apt in debian for example).
+
+USAGE
+=====
+
+1. scan
+
+Run:
+
+    ./dabs -d -w -scan channels.txt
+
+I have a shitty antenna, that's why I use -d -w. When it finds some data on a
+frequency the program won't stop scanning that frequency before it gets
+the setting data of the channel twice without reception errors in between.
+In case of error, the process starts over from scratch. There is no 'oh, this
+channel sucks, let's skip it'. The -d and -w help me to see if the scan is
+moving or stuck on a frequency. The terminal is flooded with text but, well,
+I can see what's going on and move the antenna around until I get a good
+signal.
+
+If the program does not find any data (every decoding attempt fails) then it
+will skip the frequency.
+
+That's the logic of the scan. Maybe it's bad. I don't know. I like it like
+that.
+
+When the scan is over, found channels are stored in the file 'channels.txt'.
+Of course, you can give another filename.
+
+2. listen
+
+Run:
+
+    ./dabs channels.txt
+
+Commands to type when the program runs:
+
+    l
+        list all channels
+
+    c <x>
+        <x> is the number of the channel as seen with the command 'l'
+        play channel <x>
+
+    n
+        play next channel (loop, the next channel of the last is the first)
+
+    p
+        play previous channel (loop, the prev. of the first is the last)
+
+You can look at the function user_input in dabs.c, maybe this documentation
+is not up to date (it should be!).
+
+That's basically it.
+
+You can also record and replay. Run './dabs -h' for more information.
+
+Ah, the names of the channels are in whatever character set used by the
+server. We don't convert to utf8 or whatever. Live with that.
+
+There is a equalizer hardcoded. Edit audio/alsa.c, function put_alsa, remove
+the call to filter() in there to disable the equalizer. (I should do something
+better, no? like a command-line option or something. Bah, live with it.)
+
+LIMITATIONS
+===========
+
+Only FIG 0.0, 0.1, 0.2, and 1.1 are used.
+
+Only DAB+, not DAB.
+
+Code was done with specifications version 2.1.1 (2017-01). They removed stuff
+from previous versions I think, like in this specification there is only
+"transmission mode I".
+
+PAD/XPAD is not handled. So the program only does audio, no text or image
+stuff.
+
+Frequency offset correction is not good. The "fine" part is okay I would
+say. The "coarse" is bad and will be improved in the future, depending on
+time/motivation.
+
+The time synchronization is done on the first symbol that is supposed to
+contain no energy. It's very basic. Seems to be enough for my setup.
+
+The scan stops when we have received setup data twice without reception
+errors in between. Not sure if correct.
+
+The synchronization for the superframe may be wrong. We simply suppose a
+superframe starts at cif_id % 5 == 0 (see function audio_receive_frame).
+We don't check actual data. That works for me. The firecode thing is not
+used.
+
+The Viterbi decoder is a "hard" one, not "soft". We probably lose some
+dB in there.
+
+The Reed-Solomon stuff is not used at all. If the Viterbi fails (i.e. the
+CRC is wrong) then it's game over for the AU block.
+
+Character sets are not handled. If text is not in ASCII, game over.
+
+"Change flag" in FIGs is not cared at all.
+
+Only "primary services" are used.
+
+For USRP devices, no automatic gain control (AGC). The gain is set as 1 and
+so be it. If too loud, game over. I don't know how to deal properly with gain,
+so I don't do it. As simple as that. Yes, that sucks. (I'm talking about RF
+gain, not audio gain. Audio gain is not done either. Could be, in a GUI or
+something. Maybe at some point in the future...)
+
+For RTL-SDR devices, AGC is enabled.
+
+Audio is brutal. There is no fade-out/fade-in when some audio data is missing.
+Actually, to me it's something good. In the DAB+ receiver of a car, when there
+is no audio, there is fade-out and then fade-in when audio is back. I find
+this behavior very annoying. I like the brutal cut of my program way more.
+I also like when the AAC decoder does its funky ringing sounds when some data
+is missing. I guess it's just me, but so be it. My program, my decision. Live
+with that.
+
+The Viterbi decoder is amazingly slow.
+
+There could be a GUI. The program might be betterly verbose. It might also be
+more user-friendly. When I saw sdrangel, I was wooo! But, you know, this is
+a summer project. I get audio out of data received over-the-air, the code is
+small, not much dependancies, I'm proud of myself, and that's it.
+
+Settings not used by the DAB+ emitters around me have normally not been
+implemented. The program should exit if such settings pop up. Get in touch
+with me so I can include missing pieces in a future release. (Basically you
+record a few seconds of the frequency you use and put the file somewhere. I
+download it and implement what is missing.)
